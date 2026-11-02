@@ -40,13 +40,14 @@ async function admin(from, text) {
 }
 
 // True when WhatsApp reports that the bot's own number was tagged in this message.
-function isBotTagged(p) {
-  const me = digits(process.env.BOT_NUMBER);
-  if (!me) return false;
+async function isBotTagged(p) {
+  const mine = await waha.myIds();
+  if (!mine.length) return false;
   const ids = [].concat(p.mentionedIds || [], p._data?.mentionedJidList || [], p._data?.mentionedJid || []);
-  if (ids.some(id => digits(typeof id === 'string' ? id : (id?._serialized || id?.user || '')) === me)) return true;
-  // Some clients keep the tag as plain text such as "@263716987183".
-  return new RegExp(`@${me}(?!\\d)`).test(String(p.body || ''));
+  if (ids.some(id => mine.includes(digits(typeof id === 'string' ? id : (id?._serialized || id?.user || ''))))) return true;
+  // Some clients keep the tag as plain text such as "@263716987183" or "@<LID digits>".
+  const body = String(p.body || '');
+  return mine.some(m => new RegExp(`@${m}(?!\\d)`).test(body));
 }
 
 async function handle(p) {
@@ -61,7 +62,7 @@ async function handle(p) {
 
   // Group: only answer when someone actually tags the bot (WhatsApp @mention), not when its name is typed.
   if (isGroup) {
-    if (!isBotTagged(p)) return;
+    if (!(await isBotTagged(p))) return;
     text = text.replace(/@\d[\d\s]*/g, ' ').replace(/@gretchen\b/gi, ' ').replace(/\s+/g, ' ').trim() || 'Hello';
     if (/\b(upgrade|subscribe|pricing|premium|cohort)\b/i.test(text))
       return PAYMENTS_ON ? waha.reply(from, `To upgrade, message me privately: https://wa.me/${process.env.BOT_NUMBER || ''}`) : null;

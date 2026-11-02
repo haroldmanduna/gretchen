@@ -30,4 +30,22 @@ async function reply(chatId, rawText) {
   try { await call('/api/stopTyping', { chatId }); } catch {}
   try { await call('/api/sendText', { chatId, text }); } catch (e) { console.error('[waha] send failed:', e.message); }
 }
-module.exports = { reply, toWhatsAppText };
+// The bot's own identifiers: its phone number and, for group tags, its LID (WhatsApp's internal ID).
+// Read from WAHA and cached for 10 minutes. Falls back to BOT_NUMBER if WAHA can't be reached.
+let mine = { at: 0, ids: [] };
+async function myIds() {
+  if (mine.ids.length && Date.now() - mine.at < 600000) return mine.ids;
+  try {
+    const r = await fetch(base() + `/api/sessions/${process.env.WAHA_SESSION || 'default'}`, {
+      headers: { 'X-Api-Key': process.env.WAHA_API_KEY || '' },
+      signal: AbortSignal.timeout(10000)
+    });
+    const d = await r.json();
+    const ids = [d.me?.id, d.me?.lid].filter(Boolean).map(s => String(s).split('@')[0].replace(/\D/g, '')).filter(Boolean);
+    if (ids.length) mine = { at: Date.now(), ids };
+  } catch (e) { console.error('[waha] could not read own identity:', e.message); }
+  if (mine.ids.length) return mine.ids;
+  const fallback = String(process.env.BOT_NUMBER || '').replace(/\D/g, '');
+  return fallback ? [fallback] : [];
+}
+module.exports = { reply, toWhatsAppText, myIds };
