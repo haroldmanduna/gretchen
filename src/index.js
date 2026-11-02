@@ -61,17 +61,25 @@ app.get('/pair/status', async (req, res) => {
   }
 });
 
+// One code at a time. Requesting a new code resets the WhatsApp link, so we reuse the last code for 2 minutes
+// and only ask WhatsApp for a code while the session is actually waiting for a scan.
+let lastPairCode = { code: null, at: 0 };
 app.get('/pair/code', async (req, res) => {
   if (!pairKeyOk(req)) return res.sendStatus(401);
+  res.set('Cache-Control', 'no-store');
+  if (lastPairCode.code && Date.now() - lastPairCode.at < 120000) return res.json({ code: lastPairCode.code, reused: true });
   const phone = (process.env.BOT_NUMBER || '').replace(/\D/g, '');
-  if (!phone) return res.status(500).json({ code: null });
+  if (!phone) return res.status(500).json({ code: null, message: 'BOT_NUMBER is not set' });
   try {
+    const st = await fetch(wahaUrl(`/api/sessions/${wahaSession()}`), { headers: wahaHeaders() });
+    const sd = await st.json().catch(() => ({}));
+    if (sd.status !== 'SCAN_QR_CODE') return res.json({ code: null, status: sd.status || null, message: 'Session is not waiting for a link' });
     const r = await fetch(wahaUrl(`/api/${wahaSession()}/auth/request-code`), {
       method: 'POST', headers: wahaHeaders(), body: JSON.stringify({ phoneNumber: phone }),
     });
     const d = await r.json().catch(() => ({}));
-    res.set('Cache-Control', 'no-store');
-    res.json({ code: d.code || null });
+    if (d.code) lastPairCode = { code: d.code, at: Date.now() };
+    res.json({ code: d.code || null, reused: false });
   } catch (e) {
     res.status(502).json({ code: null });
   }
