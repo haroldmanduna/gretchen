@@ -22,6 +22,61 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (_req, res) => res.send('Gretchen by Kyrion is running'));
 app.get('/health', (_req, res) => res.json({ ok: true, uptime: Math.round(process.uptime()) }));
 
+// Pairing page for linking the WhatsApp number. Every route needs the WEBHOOK_KEY in the URL.
+const path = require('path');
+const pairKeyOk = (req) => !!process.env.WEBHOOK_KEY && req.query.key === process.env.WEBHOOK_KEY;
+const wahaSession = () => process.env.WAHA_SESSION || 'default';
+const wahaUrl = (p) => `${(process.env.WAHA_URL || '').replace(/\/$/, '')}${p}`;
+const wahaHeaders = () => ({ 'X-Api-Key': process.env.WAHA_API_KEY || '', 'Content-Type': 'application/json' });
+
+app.get('/pair', (req, res) => {
+  if (!pairKeyOk(req)) return res.sendStatus(401);
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(__dirname, 'pair.html'));
+});
+
+app.get('/pair/qr', async (req, res) => {
+  if (!pairKeyOk(req)) return res.sendStatus(401);
+  try {
+    const r = await fetch(wahaUrl(`/api/${wahaSession()}/auth/qr?format=image`), { headers: wahaHeaders() });
+    if (!r.ok) return res.status(502).send('QR not ready');
+    res.set('Cache-Control', 'no-store');
+    res.type(r.headers.get('content-type') || 'image/png');
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) {
+    res.status(502).send('WAHA unreachable');
+  }
+});
+
+app.get('/pair/status', async (req, res) => {
+  if (!pairKeyOk(req)) return res.sendStatus(401);
+  try {
+    const r = await fetch(wahaUrl(`/api/sessions/${wahaSession()}`), { headers: wahaHeaders() });
+    const d = await r.json().catch(() => ({}));
+    res.set('Cache-Control', 'no-store');
+    res.json({ status: d.status || null });
+  } catch (e) {
+    res.status(502).json({ status: null });
+  }
+});
+
+app.get('/pair/code', async (req, res) => {
+  if (!pairKeyOk(req)) return res.sendStatus(401);
+  const phone = (process.env.BOT_NUMBER || '').replace(/\D/g, '');
+  if (!phone) return res.status(500).json({ code: null });
+  try {
+    const r = await fetch(wahaUrl(`/api/${wahaSession()}/auth/request-code`), {
+      method: 'POST', headers: wahaHeaders(), body: JSON.stringify({ phoneNumber: phone }),
+    });
+    const d = await r.json().catch(() => ({}));
+    res.set('Cache-Control', 'no-store');
+    res.json({ code: d.code || null });
+  } catch (e) {
+    res.status(502).json({ code: null });
+  }
+});
+
 // WAHA sends WhatsApp events here: set webhook to https://YOUR-APP/webhook?key=WEBHOOK_KEY
 // Requests without the correct key are rejected, so nobody else can feed the bot.
 app.post('/webhook', (req, res) => {

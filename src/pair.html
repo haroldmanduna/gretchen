@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Link WhatsApp</title>
+<style>
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #ffffff; color: #111; }
+  main { max-width: 420px; margin: 0 auto; padding: 24px 16px; text-align: center; }
+  h1 { font-size: 20px; margin: 8px 0 16px; }
+  #qr { width: 280px; height: 280px; max-width: 100%; image-rendering: pixelated; border: 1px solid #ddd; border-radius: 8px; }
+  #status { margin: 14px 0; font-size: 15px; }
+  .code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 32px; letter-spacing: 3px; margin: 8px 0; padding: 14px; border: 2px solid #111; border-radius: 8px; }
+  .hint { font-size: 13px; color: #555; line-height: 1.5; margin-top: 12px; }
+  .ok { color: #0a7d2c; font-weight: 600; }
+  .bad { color: #b00020; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Link WhatsApp to Gretchen</h1>
+  <img id="qr" alt="QR code" src="">
+  <div id="status">Loading…</div>
+  <div class="hint">Option 1: scan the QR above.<br>Option 2: tap <b>Link with phone number instead</b> and type this code:</div>
+  <div class="code" id="code">--------</div>
+  <div class="hint">The QR refreshes about every 15 seconds. The code refreshes every minute. This page stops refreshing once the phone is linked.</div>
+</main>
+<script>
+(function () {
+  var key = new URLSearchParams(location.search).get('key') || '';
+  var qs = '?key=' + encodeURIComponent(key);
+  var qrTimer = null, codeTimer = null;
+
+  function setStatus(text, cls) {
+    var el = document.getElementById('status');
+    el.textContent = text;
+    el.className = cls || '';
+  }
+
+  function refreshQr() {
+    document.getElementById('qr').src = '/pair/qr' + qs + '&t=' + Date.now();
+  }
+
+  function refreshCode() {
+    fetch('/pair/code' + qs, { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { document.getElementById('code').textContent = d.code || '--------'; })
+      .catch(function () { document.getElementById('code').textContent = 'unavailable'; });
+  }
+
+  function checkStatus() {
+    fetch('/pair/status' + qs, { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.status === 'WORKING') {
+          setStatus('Connected. You can close this page.', 'ok');
+          clearInterval(qrTimer); clearInterval(codeTimer);
+        } else if (d.status === 'SCAN_QR_CODE') {
+          setStatus('Waiting for you to link the phone…');
+        } else {
+          setStatus('Status: ' + (d.status || 'unknown') + '. If this stays here, tell Harold.', 'bad');
+        }
+      })
+      .catch(function () { setStatus('Cannot reach the WhatsApp service right now.', 'bad'); });
+  }
+
+  if (!key) { setStatus('Missing key in the link.', 'bad'); return; }
+  refreshQr(); refreshCode(); checkStatus();
+  qrTimer = setInterval(function () { refreshQr(); checkStatus(); }, 15000);
+  codeTimer = setInterval(refreshCode, 60000);
+})();
+</script>
+</body>
+</html>
