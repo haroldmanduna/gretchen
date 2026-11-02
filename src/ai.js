@@ -14,15 +14,15 @@ async function post(url, headers, body) {
   if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
   return r.json();
 }
-const openai = (url, key, model, headers = {}) => async (msgs) => {
-  const d = await post(url, { Authorization: `Bearer ${key}`, ...headers }, { model, messages: [{ role: 'system', content: SYSTEM }, ...msgs], max_tokens: 500, temperature: 0.7 });
+const openai = (url, key, model, headers = {}) => async (msgs, sys = SYSTEM) => {
+  const d = await post(url, { Authorization: `Bearer ${key}`, ...headers }, { model, messages: [{ role: 'system', content: sys }, ...msgs], max_tokens: 500, temperature: 0.7 });
   return d.choices?.[0]?.message?.content;
 };
 const providers = {
-  gemini: () => process.env.GEMINI_API_KEY && (async (msgs) => {
+  gemini: () => process.env.GEMINI_API_KEY && (async (msgs, sys = SYSTEM) => {
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const d = await post(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`, {}, {
-      systemInstruction: { parts: [{ text: SYSTEM }] },
+      systemInstruction: { parts: [{ text: sys }] },
       contents: msgs.slice(msgs.findIndex(m => m.role === 'user')).map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
       generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
     });
@@ -32,14 +32,14 @@ const providers = {
   openrouter: () => process.env.OPENROUTER_API_KEY && openai('https://openrouter.ai/api/v1/chat/completions', process.env.OPENROUTER_API_KEY, process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free')
 };
 
-async function ask(msgs) {
+async function ask(msgs, sys = SYSTEM) {
   const order = (process.env.PROVIDER_ORDER || 'gemini,groq,openrouter').split(',').map(s => s.trim());
   for (const name of order) {
     if (cool[name] && cool[name] > Date.now()) continue;
     const fn = providers[name] && providers[name]();
     if (!fn) continue;
     try {
-      const text = await fn(msgs);
+      const text = await fn(msgs, sys);
       if (text && text.trim()) return text.trim();
     } catch (e) { console.error(`[ai] ${name} failed:`, e.message); fail(name, e.status); }
   }

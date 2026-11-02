@@ -1,6 +1,7 @@
 const { db, getUser, setUser, usageToday, bumpUsage, addMessage, history, firstSeen } = require('./db');
 const { ask } = require('./ai');
 const waha = require('./waha');
+const coach = require('./coach');
 const pay = require('./payments');
 
 const digits = s => String(s || '').split('@')[0].replace(/\D/g, '');
@@ -59,6 +60,9 @@ async function handle(p) {
   const sender = digits(isGroup ? p.participant || p._data?.author : from);
   let text = String(p.body || '').trim().slice(0, 1500);
   if (!sender || !text) return;
+
+  // Watched group: keep a short log of everything and check the teacher's answers (no replies here).
+  if (isGroup) await coach.watch(p, from, sender, text).catch((e) => console.error('[coach]', e));
 
   // Group: only answer when someone actually tags the bot (WhatsApp @mention), not when its name is typed.
   if (isGroup) {

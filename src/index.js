@@ -106,6 +106,7 @@ const tick = () => pay.checkPending(bot.notify).catch((e) => console.error('[pay
 if (process.env.PAYMENTS_ENABLED === 'true') setInterval(tick, 15000);
 const daily = () => pay.maintenance(bot.notify).catch((e) => console.error('[maint]', e));
 setInterval(daily, 3600000);
+setInterval(() => { try { require('./coach').prune(); } catch (e) { console.error('[coach prune]', e.message); } }, 3600000);
 setTimeout(daily, 10000);
 
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e));
