@@ -1,0 +1,44 @@
+# Render Blueprint. In Render: New > Blueprint, connect the repo, then fill in the secret values.
+services:
+  - type: web
+    name: gretchen
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DB_PATH
+        value: ./gretchen.db
+      - key: PAYMENTS_ENABLED
+        value: "false"
+      - key: WAHA_SESSION
+        value: default
+      - key: BOT_NUMBER
+        value: "263716987183"
+      - key: WEBHOOK_KEY
+        sync: false
+      - key: WAHA_URL
+        sync: false
+      - key: WAHA_API_KEY
+        sync: false
+      - key: ADMIN_PHONE
+        sync: false
+      - key: PROVIDER_ORDER
+        value: gemini,groq,openrouter
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: meta-llama/llama-3.3-70b-instruct:free
+      - key: FREE_LIMIT
+        value: "10"

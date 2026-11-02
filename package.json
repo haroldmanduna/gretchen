@@ -1,0 +1,13 @@
+{
+  "name": "gretchen",
+  "version": "1.0.0",
+  "description": "Gretchen by Kyrion: WhatsApp AI assistant with EcoCash subscriptions",
+  "main": "src/index.js",
+  "scripts": { "start": "node src/index.js", "check": "node --check src/index.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "express": "^4.19.2",
+    "paynow": "^2.2.2"
+  }
+}
