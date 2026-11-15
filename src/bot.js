@@ -1,5 +1,7 @@
 const { db, getUser, setUser, usageToday, bumpUsage, addMessage, history, firstSeen } = require('./db');
 const { ask } = require('./ai');
+const prompt = require('./prompt');
+const pitches = require('./pitch');
 const waha = require('./waha');
 const coach = require('./coach');
 const pay = require('./payments');
@@ -13,7 +15,16 @@ const PAYMENTS_ON = process.env.PAYMENTS_ENABLED === 'true';
 const PAUSED = 'Paid plans are coming soon. For now you can use Gretchen on the Free plan. Type *status* to see your usage.';
 const notify = (chatId, text) => waha.reply(chatId, text);
 
-const GREETING = '*Gretchen by Kyrion* 👋\nYour AI assistant on WhatsApp. Ask me about Kyrion\'s services: websites, the AI business assistant, pricing and demos.\n\nType *status* to see your usage.';
+// Extra instructions for a first message. One combined reply, no separate greeting message.
+const NEW_CONTACT_NOTE = `
+
+THIS MESSAGE
+This is the first message from this person, and they contacted us first. Reply in ONE message: open with a short line like "Hi, I'm Gretchen from Kyrion 👋 We build websites and AI assistants for businesses.", respond to anything they said, then ask one question: what kind of business do they run? Skip that question if they already told you. Keep it to 2-3 sentences.`;
+const PITCHED_NOTE = `
+
+THIS MESSAGE
+We messaged this business first, so this is a reply to our pitch. Do not introduce yourself again and do not ask what kind of business they run or what they need. Continue from the pitch above and respond to what they said in 2-3 sentences.`;
+
 
 function plansText() {
   const p = pay.plans(), l = limits();
@@ -113,14 +124,21 @@ async function handle(p) {
   if (busy.has(sender)) return;
   busy.add(sender);
   try {
-    if (!isGroup && !user.greeted) { setUser(sender, { greeted: 1 }); await waha.reply(from, GREETING); }
+    const first = !isGroup && !user.greeted;
+    if (first) setUser(sender, { greeted: 1 });
     const key = `${from}|${sender}`;
-    const answer = await ask([...history(key, 10), { role: 'user', content: text }]);
+    // Businesses we messaged first get a pitch record; they continue from the pitch, not a fresh intro.
+    const pitch = isGroup ? null : await pitches.forPhone(sender);
+    const sys = (await prompt.getFilled(pitch)) + (first ? (pitch ? PITCHED_NOTE : NEW_CONTACT_NOTE) : '');
+    const answer = await ask([...history(key, 10), { role: 'user', content: text }], sys);
     if (!answer) return waha.reply(from, 'I am having trouble thinking right now. Please try again in a minute.');
     addMessage(key, 'user', text);
     addMessage(key, 'assistant', answer);
     bumpUsage(sender);
-    await waha.reply(from, answer.slice(0, 3500));
+    let reply = answer.slice(0, 3500);
+    // Usage hint is for numbers that already subscribed, and only on their first message in a session.
+    if (first && activePlan(user) !== 'free') reply += '\n\nType *status* to see your usage.';
+    await waha.reply(from, reply);
   } finally { busy.delete(sender); }
 }
 module.exports = { handle, notify, isBotTagged };

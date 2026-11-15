@@ -112,4 +112,18 @@ async function get() {
   return cache.text || FALLBACK + FORMAT;
 }
 
-module.exports = { get };
+// Fills the {{...}} outbound placeholders from the pitch record, or marks them as none.
+function fill(text, pitch) {
+  const v = (x) => (x && String(x).trim()) || 'none on record';
+  return text
+    .replace('{{business_name}}', v(pitch && pitch.business_name))
+    .replace('{{service_pitched}}', v(pitch && pitch.service_pitched))
+    .replace('{{first_message_sent}}', v(pitch && pitch.first_message_sent))
+    .replace('{{sample_link}}', v(pitch && pitch.sample_link));
+}
+
+async function getFilled(pitch) {
+  return fill(await get(), pitch);
+}
+
+module.exports = { get, getFilled };
