@@ -2,6 +2,7 @@ const { db, getUser, setUser, usageToday, bumpUsage, addMessage, history, firstS
 const { ask } = require('./ai');
 const prompt = require('./prompt');
 const pitches = require('./pitch');
+const contacts = require('./contacts');
 const waha = require('./waha');
 const coach = require('./coach');
 const pay = require('./payments');
@@ -124,7 +125,8 @@ async function handle(p) {
   if (busy.has(sender)) return;
   busy.add(sender);
   try {
-    const first = !isGroup && !user.greeted;
+    // First contact is decided by the Supabase contacts table, so returning numbers are never greeted as new.
+    const first = !isGroup && (await contacts.isNewContact(sender, user));
     if (first) setUser(sender, { greeted: 1 });
     const key = `${from}|${sender}`;
     // Businesses we messaged first get a pitch record; they continue from the pitch, not a fresh intro.
