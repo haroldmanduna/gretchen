@@ -48,4 +48,17 @@ async function myIds() {
   const fallback = String(process.env.BOT_NUMBER || '').replace(/\D/g, '');
   return fallback ? [fallback] : [];
 }
-module.exports = { reply, toWhatsAppText, myIds };
+// Recent messages in one chat, read from WhatsApp itself, oldest first. Includes messages Kyrion sent by hand.
+async function recentMessages(chatId, limit = 12) {
+  const r = await fetch(base() + `/api/${process.env.WAHA_SESSION || 'default'}/chats/${chatId}/messages?limit=${limit}&downloadMedia=false`, {
+    headers: { 'X-Api-Key': process.env.WAHA_API_KEY || '' },
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!r.ok) throw new Error(`WAHA history HTTP ${r.status}`);
+  const d = await r.json();
+  const list = Array.isArray(d) ? d : (d.messages || []);
+  return list
+    .map(m => ({ id: m.id, fromMe: !!m.fromMe, body: String(m.body || ''), timestamp: m.timestamp || 0 }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+module.exports = { reply, toWhatsAppText, myIds, recentMessages };
