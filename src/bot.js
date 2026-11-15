@@ -8,7 +8,6 @@ const coach = require('./coach');
 const pay = require('./payments');
 
 const digits = s => String(s || '').split('@')[0].replace(/\D/g, '');
-const limits = () => ({ free: +process.env.FREE_LIMIT || 10, premium: +process.env.PREMIUM_LIMIT || 150, cohort: +process.env.COHORT_LIMIT || 300 });
 const activePlan = u => (u.plan !== 'free' && u.expires_at && u.expires_at < Date.now() ? 'free' : u.plan);
 const busy = new Set();
 // Paid plans are paused. Set PAYMENTS_ENABLED=true to turn them back on.
@@ -28,13 +27,13 @@ We messaged this business first, so this is a reply to our pitch. Do not introdu
 
 
 function plansText() {
-  const p = pay.plans(), l = limits();
-  return `*Gretchen plans*\n\n*Free:* ${l.free} messages a day.\n*Premium* ($${p.premium.price}, ${p.premium.days} days): ${l.premium} messages a day.\n*Certified Cohort* ($${p.cohort.price}, ${p.cohort.days} days): ${l.cohort} messages a day.\n\nReply *premium* or *cohort* to pay with EcoCash.`;
+  const p = pay.plans();
+  return `*Gretchen plans*\n\n*Free:* unlimited messages.\n*Premium* ($${p.premium.price}, ${p.premium.days} days): unlimited messages.\n*Certified Cohort* ($${p.cohort.price}, ${p.cohort.days} days): unlimited messages.\n\nReply *premium* or *cohort* to pay with EcoCash.`;
 }
 function statusText(u, id) {
-  const plan = activePlan(u), l = limits()[plan];
+  const plan = activePlan(u);
   const until = plan !== 'free' ? `\nActive until ${pay.fmt(u.expires_at)}.` : '';
-  return `Your plan: *${plan}*.${until}\nMessages today: ${usageToday(id)} of ${l}.`;
+  return `Your plan: *${plan}*.${until}\nMessages today: ${usageToday(id)}. Messages are unlimited.`;
 }
 
 async function admin(from, text) {
@@ -116,11 +115,7 @@ async function handle(p) {
     if (lower === 'check payment') { await pay.checkPending(notify); return waha.reply(from, 'Checked. I will message you when a payment goes through.'); }
   }
 
-  const plan = activePlan(user), lim = limits()[plan];
-  if (usageToday(sender) >= lim)
-    return waha.reply(from, plan === 'free'
-      ? `You have used your ${lim} free messages today. Type *upgrade* for more, or come back tomorrow.`
-      : `You have reached today's limit of ${lim} messages. It resets tomorrow.`);
+  // No daily message cap: messages are unlimited on every plan.
 
   if (busy.has(sender)) return;
   busy.add(sender);
