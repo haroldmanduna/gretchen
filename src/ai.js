@@ -32,7 +32,9 @@ const providers = {
   openrouter: () => process.env.OPENROUTER_API_KEY && openai('https://openrouter.ai/api/v1/chat/completions', process.env.OPENROUTER_API_KEY, process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free')
 };
 
-async function ask(msgs, sys = SYSTEM) {
+async function ask(msgs, sys) {
+  // Business prompt comes from Supabase (see prompt.js) unless a caller passes its own.
+  sys = sys || (await require('./prompt').get());
   const order = (process.env.PROVIDER_ORDER || 'gemini,groq,openrouter').split(',').map(s => s.trim());
   for (const name of order) {
     if (cool[name] && cool[name] > Date.now()) continue;

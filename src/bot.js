@@ -13,11 +13,11 @@ const PAYMENTS_ON = process.env.PAYMENTS_ENABLED === 'true';
 const PAUSED = 'Paid plans are coming soon. For now you can use Gretchen on the Free plan. Type *status* to see your usage.';
 const notify = (chatId, text) => waha.reply(chatId, text);
 
-const GREETING = '*Gretchen by Kyrion* 👋\nYour AI assistant on WhatsApp. Ask me anything: business ideas, study help, ads, posters and more.\n\nType *upgrade* to see Premium and the Certified Cohort.';
+const GREETING = '*Gretchen by Kyrion* 👋\nYour AI assistant on WhatsApp. Ask me about Kyrion\'s services: websites, the AI business assistant, pricing and demos.\n\nType *status* to see your usage.';
 
 function plansText() {
   const p = pay.plans(), l = limits();
-  return `*Gretchen plans*\n\n*Free:* ${l.free} messages a day.\n*Premium* ($${p.premium.price}, ${p.premium.days} days): ${l.premium} messages a day and the AI Literacy Premium month.\n*Certified Cohort* ($${p.cohort.price}, ${p.cohort.days} days): ${l.cohort} messages a day and the certified cohort.\n\nReply *premium* or *cohort* to pay with EcoCash.`;
+  return `*Gretchen plans*\n\n*Free:* ${l.free} messages a day.\n*Premium* ($${p.premium.price}, ${p.premium.days} days): ${l.premium} messages a day.\n*Certified Cohort* ($${p.cohort.price}, ${p.cohort.days} days): ${l.cohort} messages a day.\n\nReply *premium* or *cohort* to pay with EcoCash.`;
 }
 function statusText(u, id) {
   const plan = activePlan(u), l = limits()[plan];
@@ -62,7 +62,8 @@ async function handle(p) {
   if (!sender || !text) return;
 
   // Watched group: keep a short log of everything and check the teacher's answers (no replies here).
-  if (isGroup) await coach.watch(p, from, sender, text).catch((e) => console.error('[coach]', e));
+  // AI Literacy coaching is switched off for the business assistant. Set COACH_ENABLED=true to bring it back.
+  if (isGroup && process.env.COACH_ENABLED === 'true') await coach.watch(p, from, sender, text).catch((e) => console.error('[coach]', e));
 
   // Group: only answer when someone actually tags the bot (WhatsApp @mention), not when its name is typed.
   if (isGroup) {
