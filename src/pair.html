@@ -68,7 +68,7 @@
         } else if (d.status === 'SCAN_QR_CODE') {
           setStatus('Waiting for you to link the phone…');
         } else {
-          setStatus('Status: ' + (d.status || 'unknown') + '. Tell Harold if this stays here.', 'bad');
+          setStatus('Preparing the WhatsApp connection. Please wait…');
         }
       })
       .catch(function () { setStatus('Cannot reach the WhatsApp service right now.', 'bad'); });
@@ -77,7 +77,6 @@
   if (!key) { setStatus('Missing key in the link.', 'bad'); return; }
   document.getElementById('newcode').addEventListener('click', getCode);
   refreshQr(); checkStatus();
-  getCode();
   qrTimer = setInterval(refreshQr, 20000);
   statusTimer = setInterval(checkStatus, 15000);
 })();

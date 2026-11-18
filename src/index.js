@@ -49,11 +49,21 @@ app.get('/pair/qr', async (req, res) => {
   }
 });
 
+let lastPairRestart = 0;
 app.get('/pair/status', async (req, res) => {
   if (!pairKeyOk(req)) return res.sendStatus(401);
   try {
     const r = await fetch(wahaUrl(`/api/sessions/${wahaSession()}`), { headers: wahaHeaders() });
     const d = await r.json().catch(() => ({}));
+    // An unused QR can expire and leave WAHA failed. Restart only when a user
+    // opens the protected pairing page, and never interrupt a working session.
+    if (['FAILED', 'STOPPED'].includes(d.status) && Date.now() - lastPairRestart > 45000) {
+      lastPairRestart = Date.now();
+      const restart = await fetch(wahaUrl(`/api/sessions/${wahaSession()}/restart`), {
+        method: 'POST', headers: wahaHeaders(), body: '{}', signal: AbortSignal.timeout(20000)
+      });
+      if (restart.ok) d.status = 'STARTING';
+    }
     res.set('Cache-Control', 'no-store');
     res.json({ status: d.status || null });
   } catch (e) {
