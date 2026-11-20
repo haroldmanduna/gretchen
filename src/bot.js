@@ -24,14 +24,14 @@ This is the first message from this person, and they contacted us first. Reply i
 const PITCHED_NOTE = `
 
 THIS MESSAGE
-We messaged this business first, so this is a reply to our pitch. Do not introduce yourself again and do not ask what kind of business they run or what they need. If they ask who this is, answer in one short sentence (you are Kyrion's assistant and Harold reached out), then carry on from the pitch. Do not say your name and do not start with "I am". Start with your answer to what they said. The business name is already known, so the next missing detail is the town, then their name, then the best time to talk. Ask only one of these. Continue from the pitch above and respond to what they said in 2-3 sentences.`;
+We messaged this business first, so this is a reply to our pitch. Do not introduce yourself again and do not ask what kind of business they run or what they need. If they ask who you are or your name, answer clearly that you are Gretchen, Kyrion's AI assistant, then continue from the pitch. Do not introduce yourself unprompted. Start with your answer to what they said. The business name is already known, so the next missing detail is the town, then their name, then the best time to talk. Ask only one of these. Continue from the pitch above and respond to what they said in 2-3 sentences.`;
 
 
 // Kyrion already talked with this chat (by hand or by Gretchen): carry on from the last message, no intro.
 const KYRION_FIRST_NOTE = `
 
 THIS MESSAGE
-Kyrion has already been talking with this person (see EARLIER CONVERSATION). Do not introduce yourself, do not say your name, and do not greet them as new. Start with your answer to what they said. Read what Kyrion already asked and what the person already answered. Never ask those again, and do not ask for the business type unless it is missing from that conversation. Reply to what they just said, then continue from the last thing Kyrion asked, with at most one question. Keep it to 2-3 sentences.`;
+Kyrion has already been talking with this person (see EARLIER CONVERSATION). Do not introduce yourself unprompted or greet them as new. If asked your name or identity, answer clearly that you are Gretchen, Kyrion's AI assistant. Start with your answer to what they said. Read what Kyrion already asked and what the person already answered. Never ask those again, and do not ask for the business type unless it is missing from that conversation. Reply to what they just said, then continue from the last thing Kyrion asked, with at most one question. Keep it to 2-3 sentences.`;
 
 function plansText() {
   const p = pay.plans();
